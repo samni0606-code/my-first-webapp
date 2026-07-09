@@ -1,504 +1,455 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BASF Yeosu EHS Dashboard V2</title>
 
-<style>
-  body {
-    margin: 0;
-    font-family: Arial, "Noto Sans KR", sans-serif;
-    background: #f3f5f7;
-    color: #111827;
+import React, { useEffect, useMemo, useState } from "react";
+
+
+const STORAGE_KEYS = {
+  tdl: "ehs_dashboard_tdl_items_v1",
+  tanks: "ehs_dashboard_tank_inspections_v1",
+};
+
+
+const WEATHER_CODE = {
+  0: "맑음",
+  1: "대체로 맑음",
+  2: "부분 흐림",
+  3: "흐림",
+  45: "안개",
+  48: "착빙 안개",
+  51: "약한 이슬비",
+  53: "이슬비",
+  55: "강한 이슬비",
+  61: "약한 비",
+  63: "비",
+  65: "강한 비",
+  71: "약한 눈",
+  73: "눈",
+  75: "강한 눈",
+  80: "약한 소나기",
+  81: "소나기",
+  82: "강한 소나기",
+  95: "뇌우",
+};
+
+
+function loadLocalStorage(key, fallback) {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+
+function saveLocalStorage(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Local storage may be blocked in some browsers.
+  }
+}
+
+
+function todayText() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+
+function getDaysUntil(dateText) {
+  if (!dateText) return null;
+  const today = new Date();
+  const target = new Date(`${dateText}T00:00:00`);
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
+}
+
+
+function getInspectionStatus(nextDate) {
+  const days = getDaysUntil(nextDate);
+  if (days === null) return { label: "미입력", color: "bg-slate-100 text-slate-700", daysText: "-" };
+  if (days < 0) return { label: "기한초과", color: "bg-red-100 text-red-700", daysText: `${Math.abs(days)}일 초과` };
+  if (days <= 30) return { label: "임박", color: "bg-amber-100 text-amber-700", daysText: `${days}일 남음` };
+  return { label: "정상", color: "bg-emerald-100 text-emerald-700", daysText: `${days}일 남음` };
+}
+
+
+const initialTdlForm = {
+  title: "",
+  owner: "",
+  dueDate: "",
+  priority: "보통",
+  status: "Open",
+  memo: "",
+};
+
+
+const initialTankForm = {
+  tankNo: "",
+  area: "",
+  material: "",
+  capacity: "",
+  lastInspection: "",
+  cycleMonths: "12",
+  nextInspection: "",
+  memo: "",
+};
+
+
+export default function EHSDashboard() {
+  const [tdlItems, setTdlItems] = useState(() => loadLocalStorage(STORAGE_KEYS.tdl, []));
+  const [tankItems, setTankItems] = useState(() => loadLocalStorage(STORAGE_KEYS.tanks, []));
+  const [tdlForm, setTdlForm] = useState(initialTdlForm);
+  const [tankForm, setTankForm] = useState(initialTankForm);
+  const [tdlSearch, setTdlSearch] = useState("");
+  const [tankSearch, setTankSearch] = useState("");
+  const [weather, setWeather] = useState(null);
+  const [weatherError, setWeatherError] = useState("");
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  useEffect(() => saveLocalStorage(STORAGE_KEYS.tdl, tdlItems), [tdlItems]);
+  useEffect(() => saveLocalStorage(STORAGE_KEYS.tanks, tankItems), [tankItems]);
+  useEffect(() => {
+    fetchWeather();
+  }, []);
+
+
+  function fetchWeather() {
+    setWeatherLoading(true);
+    setWeatherError("");
+
+
+    fetch("https://api.open-meteo.com/v1/forecast?latitude=34.7604&longitude=127.6622&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Asia%2FSeoul")
+      .then((res) => {
+        if (!res.ok) throw new Error("날씨 정보를 불러오지 못했습니다.");
+        return res.json();
+      })
+      .then((data) => {
+        setWeather({
+          temperature: data.current?.temperature_2m,
+          humidity: data.current?.relative_humidity_2m,
+          wind: data.current?.wind_speed_10m,
+          code: data.current?.weather_code,
+          time: data.current?.time,
+        });
+      })
+      .catch(() => setWeatherError("실시간 날씨 연결 실패. 인터넷 연결 또는 브라우저 보안 설정을 확인하세요."))
+      .finally(() => setWeatherLoading(false));
   }
 
-  header {
-    background: linear-gradient(135deg, #0f2f57, #1d4ed8);
-    color: white;
-    padding: 24px;
+
+  function addTdlItem() {
+    if (!tdlForm.title.trim()) return;
+    const newItem = {
+      id: crypto.randomUUID(),
+      createdAt: todayText(),
+      ...tdlForm,
+      title: tdlForm.title.trim(),
+    };
+    setTdlItems([newItem, ...tdlItems]);
+    setTdlForm(initialTdlForm);
   }
 
-  header h1 {
-    margin: 0;
-    font-size: 30px;
+
+  function updateTdlStatus(id, status) {
+    setTdlItems((items) => items.map((item) => item.id === id ? { ...item, status } : item));
   }
 
-  header p {
-    margin: 8px 0 0;
-    font-size: 14px;
-    opacity: 0.9;
+
+  function deleteTdlItem(id) {
+    setTdlItems((items) => items.filter((item) => item.id !== id));
   }
 
-  main {
-    max-width: 1500px;
-    margin: auto;
-    padding: 20px;
+
+  function calculateNextInspection(lastInspection, cycleMonths) {
+    if (!lastInspection || !cycleMonths) return "";
+    const next = new Date(`${lastInspection}T00:00:00`);
+    next.setMonth(next.getMonth() + Number(cycleMonths));
+    return next.toISOString().slice(0, 10);
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 16px;
+
+  function addTankItem() {
+    if (!tankForm.tankNo.trim()) return;
+    const calculatedNext = tankForm.nextInspection || calculateNextInspection(tankForm.lastInspection, tankForm.cycleMonths);
+    const newTank = {
+      id: crypto.randomUUID(),
+      ...tankForm,
+      tankNo: tankForm.tankNo.trim(),
+      nextInspection: calculatedNext,
+    };
+    setTankItems([newTank, ...tankItems]);
+    setTankForm(initialTankForm);
   }
 
-  .card {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-    border: 1px solid #e5e7eb;
+
+  function deleteTankItem(id) {
+    setTankItems((items) => items.filter((item) => item.id !== id));
   }
 
-  .span-3 { grid-column: span 3; }
-  .span-4 { grid-column: span 4; }
-  .span-5 { grid-column: span 5; }
-  .span-6 { grid-column: span 6; }
-  .span-7 { grid-column: span 7; }
-  .span-8 { grid-column: span 8; }
-  .span-12 { grid-column: span 12; }
 
-  h2 {
-    margin-top: 0;
-    font-size: 21px;
+  function markTankInspected(id) {
+    setTankItems((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const today = todayText();
+      return {
+        ...item,
+        lastInspection: today,
+        nextInspection: calculateNextInspection(today, item.cycleMonths || 12),
+      };
+    }));
   }
 
-  .muted {
-    color: #6b7280;
-    font-size: 13px;
-  }
 
-  .stat-row {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
+  const filteredTdlItems = useMemo(() => {
+    const q = tdlSearch.trim().toLowerCase();
+    if (!q) return tdlItems;
+    return tdlItems.filter((item) => [item.title, item.owner, item.status, item.priority, item.memo].join(" ").toLowerCase().includes(q));
+  }, [tdlItems, tdlSearch]);
 
-  .stat {
-    flex: 1;
-    min-width: 120px;
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 14px;
-  }
 
-  .stat-label {
-    color: #6b7280;
-    font-size: 13px;
-  }
+  const filteredTankItems = useMemo(() => {
+    const q = tankSearch.trim().toLowerCase();
+    if (!q) return tankItems;
+    return tankItems.filter((item) => [item.tankNo, item.area, item.material, item.capacity, item.memo].join(" ").toLowerCase().includes(q));
+  }, [tankItems, tankSearch]);
 
-  .stat-value {
-    margin-top: 6px;
-    font-size: 26px;
-    font-weight: bold;
-  }
 
-  input, select, textarea {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #d1d5db;
-    border-radius: 10px;
-    font-size: 14px;
-    box-sizing: border-box;
-  }
+  const tdlSummary = useMemo(() => ({
+    total: tdlItems.length,
+    open: tdlItems.filter((item) => item.status === "Open").length,
+    progress: tdlItems.filter((item) => item.status === "진행중").length,
+    done: tdlItems.filter((item) => item.status === "완료").length,
+  }), [tdlItems]);
 
-  textarea {
-    min-height: 72px;
-    resize: vertical;
-  }
 
-  button {
-    border: 0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-weight: bold;
-    cursor: pointer;
-  }
+  const tankSummary = useMemo(() => ({
+    total: tankItems.length,
+    overdue: tankItems.filter((item) => getDaysUntil(item.nextInspection) < 0).length,
+    dueSoon: tankItems.filter((item) => {
+      const days = getDaysUntil(item.nextInspection);
+      return days !== null && days >= 0 && days <= 30;
+    }).length,
+  }), [tankItems]);
 
-  .btn-blue { background: #2563eb; color: white; }
-  .btn-red { background: #dc2626; color: white; }
-  .btn-gray { background: #e5e7eb; color: #111827; }
-  .btn-dark { background: #111827; color: white; }
-  .btn-green { background: #16a34a; color: white; }
 
-  .badge {
-    display: inline-block;
-    padding: 5px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    color: white;
-    font-weight: bold;
-    white-space: nowrap;
-  }
+  return (
+    <div className="min-h-screen bg-slate-100 p-4 md:p-8 text-slate-900">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <header className="rounded-3xl bg-slate-950 text-white p-6 shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+            <div>
+              <p className="text-sm text-slate-300">BASF Yeosu EHS Working Tool</p>
+              <h1 className="text-3xl md:text-4xl font-bold mt-1">EHS Dashboard V2</h1>
+              <p className="text-slate-300 mt-2">TDL 관리 · 탱크 검사기간 관리 · 여수 실시간 날씨</p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-2xl bg-white/10 p-3">
+                <div className="text-2xl font-bold">{tdlSummary.open}</div>
+                <div className="text-xs text-slate-300">Open TDL</div>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-3">
+                <div className="text-2xl font-bold">{tankSummary.dueSoon}</div>
+                <div className="text-xs text-slate-300">30일 이내</div>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-3">
+                <div className="text-2xl font-bold">{tankSummary.overdue}</div>
+                <div className="text-xs text-slate-300">기한초과</div>
+              </div>
+            </div>
+          </div>
+        </header>
+        <section className="grid lg:grid-cols-3 gap-6">
+          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200 lg:col-span-2">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <div>
+                <h2 className="text-2xl font-bold">TDL 입력 · 저장 · 표시</h2>
+                <p className="text-sm text-slate-500">입력한 항목은 브라우저 LocalStorage에 자동 저장됩니다.</p>
+              </div>
+              <input
+                className="hidden md:block rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                placeholder="TDL 검색"
+                value={tdlSearch}
+                onChange={(e) => setTdlSearch(e.target.value)}
+              />
+            </div>
+            <div className="grid md:grid-cols-6 gap-3 mb-4">
+              <input className="md:col-span-2 rounded-xl border p-3" placeholder="할 일 / Action item" value={tdlForm.title} onChange={(e) => setTdlForm({ ...tdlForm, title: e.target.value })} />
+              <input className="rounded-xl border p-3" placeholder="담당자" value={tdlForm.owner} onChange={(e) => setTdlForm({ ...tdlForm, owner: e.target.value })} />
+              <input className="rounded-xl border p-3" type="date" value={tdlForm.dueDate} onChange={(e) => setTdlForm({ ...tdlForm, dueDate: e.target.value })} />
+              <select className="rounded-xl border p-3" value={tdlForm.priority} onChange={(e) => setTdlForm({ ...tdlForm, priority: e.target.value })}>
+                <option>낮음</option>
+                <option>보통</option>
+                <option>높음</option>
+                <option>긴급</option>
+              </select>
+              <button className="rounded-xl bg-slate-950 text-white font-semibold px-4 py-3 hover:bg-slate-800" onClick={addTdlItem}>추가</button>
+              <textarea className="md:col-span-6 rounded-xl border p-3 min-h-20" placeholder="메모 / 진행사항" value={tdlForm.memo} onChange={(e) => setTdlForm({ ...tdlForm, memo: e.target.value })} />
+            </div>
+            <input
+              className="md:hidden w-full rounded-xl border border-slate-300 px-3 py-2 text-sm mb-4"
+              placeholder="TDL 검색"
+              value={tdlSearch}
+              onChange={(e) => setTdlSearch(e.target.value)}
+            />
 
-  .green { background: #16a34a; }
-  .blue { background: #2563eb; }
-  .red { background: #dc2626; }
-  .yellow { background: #f59e0b; color: #111827; }
-  .gray { background: #6b7280; }
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-slate-50 text-left">
+                    <th className="p-3">상태</th>
+                    <th className="p-3">Action Item</th>
+                    <th className="p-3">담당</th>
+                    <th className="p-3">기한</th>
+                    <th className="p-3">우선순위</th>
+                    <th className="p-3">메모</th>
+                    <th className="p-3">관리</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTdlItems.length === 0 && (
+                    <tr><td className="p-5 text-center text-slate-400" colSpan="7">등록된 TDL이 없습니다.</td></tr>
+                  )}
+                  {filteredTdlItems.map((item) => (
+                    <tr key={item.id} className="border-b hover:bg-slate-50">
+                      <td className="p-3">
+                        <select className="rounded-lg border p-2" value={item.status} onChange={(e) => updateTdlStatus(item.id, e.target.value)}>
+                          <option>Open</option>
+                          <option>진행중</option>
+                          <option>완료</option>
+                          <option>보류</option>
+                        </select>
+                      </td>
+                      <td className="p-3 font-semibold">{item.title}</td>
+                      <td className="p-3">{item.owner || "-"}</td>
+                      <td className="p-3">{item.dueDate || "-"}</td>
+                      <td className="p-3">{item.priority}</td>
+                      <td className="p-3 max-w-xs truncate" title={item.memo}>{item.memo || "-"}</td>
+                      <td className="p-3">
+                        <button className="text-red-600 hover:underline" onClick={() => deleteTdlItem(item.id)}>삭제</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 10px;
-    margin-bottom: 12px;
-  }
 
-  .col-2 { grid-column: span 2; }
-  .col-3 { grid-column: span 3; }
-  .col-4 { grid-column: span 4; }
-  .col-5 { grid-column: span 5; }
-  .col-6 { grid-column: span 6; }
-  .col-8 { grid-column: span 8; }
-  .col-10 { grid-column: span 10; }
-  .col-12 { grid-column: span 12; }
+          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-2xl font-bold">여수 날씨</h2>
+                <p className="text-sm text-slate-500">Yeosu 기준 실시간 기상 데이터</p>
+              </div>
+              <button className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50" onClick={fetchWeather}>새로고침</button>
+            </div>
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
 
-  th, td {
-    padding: 9px;
-    border-bottom: 1px solid #e5e7eb;
-    text-align: left;
-    vertical-align: middle;
-  }
+            <div className="mt-6 rounded-3xl bg-gradient-to-br from-sky-500 to-blue-700 text-white p-6 min-h-64 flex flex-col justify-between">
+              {weatherLoading && <p>날씨 불러오는 중...</p>}
+              {weatherError && <p className="text-sm bg-white/20 rounded-xl p-3">{weatherError}</p>}
+              {weather && !weatherLoading && !weatherError && (
+                <>
+                  <div>
+                    <div className="text-sm opacity-80">현재 날씨</div>
+                    <div className="text-6xl font-bold mt-2">{weather.temperature}℃</div>
+                    <div className="text-xl mt-2">{WEATHER_CODE[weather.code] || "날씨 코드 " + weather.code}</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-6 text-sm">
+                    <div className="rounded-2xl bg-white/15 p-3">
+                      <div className="opacity-75">습도</div>
+                      <div className="text-lg font-bold">{weather.humidity}%</div>
+                    </div>
+                    <div className="rounded-2xl bg-white/15 p-3">
+                      <div className="opacity-75">풍속</div>
+                      <div className="text-lg font-bold">{weather.wind} km/h</div>
+                    </div>
+                    <div className="rounded-2xl bg-white/15 p-3 col-span-2">
+                      <div className="opacity-75">업데이트</div>
+                      <div className="font-semibold">{weather.time?.replace("T", " ")}</div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </section>
 
-  th {
-    background: #f9fafb;
-    position: sticky;
-    top: 0;
-    z-index: 1;
-  }
 
-  .table-wrap {
-    max-height: 430px;
-    overflow: auto;
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-  }
+        <section className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
+            <div>
+              <h2 className="text-2xl font-bold">탱크별 검사기간 관리</h2>
+              <p className="text-sm text-slate-500">최종검사일 + 검사주기 기준으로 다음 검사일을 자동 계산할 수 있습니다.</p>
+            </div>
+            <input
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+              placeholder="탱크 검색"
+              value={tankSearch}
+              onChange={(e) => setTankSearch(e.target.value)}
+            />
+          </div>
 
-  .todo-item, .check-item {
-    border: 1px solid #e5e7eb;
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 8px;
-    background: white;
-    display: grid;
-    grid-template-columns: 40px 1fr 100px 110px 90px;
-    gap: 10px;
-    align-items: center;
-  }
 
-  .done {
-    opacity: 0.55;
-    text-decoration: line-through;
-  }
+          <div className="grid md:grid-cols-8 gap-3 mb-4">
+            <input className="rounded-xl border p-3" placeholder="Tank No." value={tankForm.tankNo} onChange={(e) => setTankForm({ ...tankForm, tankNo: e.target.value })} />
+            <input className="rounded-xl border p-3" placeholder="Area" value={tankForm.area} onChange={(e) => setTankForm({ ...tankForm, area: e.target.value })} />
+            <input className="rounded-xl border p-3" placeholder="물질" value={tankForm.material} onChange={(e) => setTankForm({ ...tankForm, material: e.target.value })} />
+            <input className="rounded-xl border p-3" placeholder="용량(kL)" value={tankForm.capacity} onChange={(e) => setTankForm({ ...tankForm, capacity: e.target.value })} />
+            <input className="rounded-xl border p-3" type="date" value={tankForm.lastInspection} onChange={(e) => setTankForm({ ...tankForm, lastInspection: e.target.value, nextInspection: calculateNextInspection(e.target.value, tankForm.cycleMonths) })} />
+            <input className="rounded-xl border p-3" type="number" min="1" placeholder="주기(개월)" value={tankForm.cycleMonths} onChange={(e) => setTankForm({ ...tankForm, cycleMonths: e.target.value, nextInspection: calculateNextInspection(tankForm.lastInspection, e.target.value) })} />
+            <input className="rounded-xl border p-3" type="date" value={tankForm.nextInspection} onChange={(e) => setTankForm({ ...tankForm, nextInspection: e.target.value })} />
+            <button className="rounded-xl bg-slate-950 text-white font-semibold px-4 py-3 hover:bg-slate-800" onClick={addTankItem}>추가</button>
+            <input className="md:col-span-8 rounded-xl border p-3" placeholder="비고 / 검사 특이사항" value={tankForm.memo} onChange={(e) => setTankForm({ ...tankForm, memo: e.target.value })} />
+          </div>
 
-  .small {
-    font-size: 12px;
-  }
 
-  #errorBox {
-    display: none;
-    background: #fee2e2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-    padding: 12px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    white-space: pre-wrap;
-  }
-
-  @media (max-width: 900px) {
-    .span-3, .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 {
-      grid-column: span 12;
-    }
-
-    .form-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .col-2, .col-3, .col-4, .col-5, .col-6, .col-8, .col-10, .col-12 {
-      grid-column: span 1;
-    }
-
-    .todo-item, .check-item {
-      grid-template-columns: 1fr;
-    }
-  }
-</style>
-</head>
-
-<body>
-<header>
-  <h1>BASF Yeosu EHS Dashboard V2</h1>
-  <p>설비 검사일 · 위험물 저장량 · TDL · 소화기 점검 · 여수 실시간 날씨</p>
-</header>
-
-<main>
-  <div id="errorBox"></div>
-
-  <div class="grid">
-
-    <section class="card span-4">
-      <h2>여수 실시간 날씨</h2>
-      <div class="muted" id="weatherMessage">날씨 정보를 불러오는 중...</div>
-
-      <div class="stat-row" style="margin-top:14px;">
-        <div class="stat">
-          <div class="stat-label">기온</div>
-          <div class="stat-value" id="wTemp">-</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">습도</div>
-          <div class="stat-value" id="wHumidity">-</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">풍속</div>
-          <div class="stat-value" id="wWind">-</div>
-        </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-slate-50 text-left">
+                  <th className="p-3">상태</th>
+                  <th className="p-3">Tank No.</th>
+                  <th className="p-3">Area</th>
+                  <th className="p-3">물질</th>
+                  <th className="p-3">용량</th>
+                  <th className="p-3">최종검사일</th>
+                  <th className="p-3">주기</th>
+                  <th className="p-3">다음검사일</th>
+                  <th className="p-3">잔여일</th>
+                  <th className="p-3">비고</th>
+                  <th className="p-3">관리</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTankItems.length === 0 && (
+                  <tr><td className="p-5 text-center text-slate-400" colSpan="11">등록된 탱크가 없습니다.</td></tr>
+                )}
+                {filteredTankItems.map((item) => {
+                  const status = getInspectionStatus(item.nextInspection);
+                  return (
+                    <tr key={item.id} className="border-b hover:bg-slate-50">
+                      <td className="p-3"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${status.color}`}>{status.label}</span></td>
+                      <td className="p-3 font-semibold">{item.tankNo}</td>
+                      <td className="p-3">{item.area || "-"}</td>
+                      <td className="p-3">{item.material || "-"}</td>
+                      <td className="p-3">{item.capacity ? `${item.capacity} kL` : "-"}</td>
+                      <td className="p-3">{item.lastInspection || "-"}</td>
+                      <td className="p-3">{item.cycleMonths || "-"}개월</td>
+                      <td className="p-3">{item.nextInspection || "-"}</td>
+                      <td className="p-3 font-semibold">{status.daysText}</td>
+                      <td className="p-3 max-w-xs truncate" title={item.memo}>{item.memo || "-"}</td>
+                      <td className="p-3 whitespace-nowrap space-x-3">
+                        <button className="text-blue-700 hover:underline" onClick={() => markTankInspected(item.id)}>검사완료</button>
+                        <button className="text-red-600 hover:underline" onClick={() => deleteTankItem(item.id)}>삭제</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
-
-      <div style="margin-top:14px;">
-        <span id="weatherBadge" class="badge gray">확인 중</span>
-      </div>
-
-      <p class="muted" style="margin-top:12px;">
-        Open-Meteo API / 여수 좌표 기준
-      </p>
-    </section>
-
-    <section class="card span-8">
-      <h2>설비 검사 현황 요약</h2>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">총 설비</div>
-          <div class="stat-value" id="kTotal">-</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">유효성 Y</div>
-          <div class="stat-value" id="kValidY">-</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">유효성 N</div>
-          <div class="stat-value" id="kValidN">-</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">검사 임박/초과</div>
-          <div class="stat-value" id="kUrgent">-</div>
-        </div>
-      </div>
-
-      <h3 style="margin-top:18px;">검사 임박 설비 TOP 5</h3>
-      <div id="urgentTankList" class="muted">불러오는 중...</div>
-    </section>
-
-    <section class="card span-4">
-      <h2>위험물 저장량 계산기</h2>
-
-      <div class="form-grid">
-        <div class="col-12">
-          <label>설비 선택</label>
-          <select id="tankSelect"></select>
-        </div>
-        <div class="col-6">
-          <label>허가용량</label>
-          <input id="permitInput" type="number">
-        </div>
-        <div class="col-6">
-          <label>현재 저장량</label>
-          <input id="currentInput" type="number" placeholder="예: 850000">
-        </div>
-        <div class="col-12">
-          <button class="btn-blue" onclick="calcStorage()">저장량 계산</button>
-        </div>
-      </div>
-
-      <div id="storageResult" class="muted">설비와 현재 저장량을 입력하세요.</div>
-      <p class="muted">80% 미만 정상, 80~95% 주의, 95% 이상 경고</p>
-    </section>
-
-    <section class="card span-8">
-      <h2>TDL / To Do List</h2>
-
-      <div class="form-grid">
-        <div class="col-5">
-          <label>업무명</label>
-          <input id="todoTitle" placeholder="예: 위험물 변경신고 검토">
-        </div>
-        <div class="col-3">
-          <label>Due Date</label>
-          <input id="todoDue" type="date">
-        </div>
-        <div class="col-3">
-          <label>구분</label>
-          <select id="todoCategory">
-            <option>위험물</option>
-            <option>소방</option>
-            <option>PSM</option>
-            <option>ER</option>
-            <option>교육</option>
-            <option>공통</option>
-          </select>
-        </div>
-        <div class="col-1" style="display:flex;align-items:end;">
-          <button class="btn-blue" onclick="addTodo()">추가</button>
-        </div>
-        <div class="col-12">
-          <label>메모</label>
-          <textarea id="todoMemo" placeholder="필요 시 메모"></textarea>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <button class="btn-gray" onclick="setTodoFilter('all')">전체</button>
-        <button class="btn-gray" onclick="setTodoFilter('open')">미완료</button>
-        <button class="btn-gray" onclick="setTodoFilter('done')">완료</button>
-        <button class="btn-red" onclick="clearDoneTodos()">완료 항목 삭제</button>
-      </div>
-
-      <div id="todoList"></div>
-      <p class="muted">D-3 이하 빨강, D-7 이하 파랑, 그 이상 초록</p>
-    </section>
-
-    <section class="card span-12">
-      <h2>설비 검사 Tracker</h2>
-
-      <div class="form-grid">
-        <div class="col-5">
-          <input id="tankSearch" placeholder="설비명, 부서, 물질명 검색" oninput="renderTankTable()">
-        </div>
-        <div class="col-3">
-          <select id="inspectionFilter" onchange="renderTankTable()">
-            <option value="all">전체 상태</option>
-            <option value="red">초과/30일 이하</option>
-            <option value="blue">90일 이하</option>
-            <option value="green">90일 초과</option>
-          </select>
-        </div>
-        <div class="col-2">
-          <select id="validFilter" onchange="renderTankTable()">
-            <option value="all">유효성 전체</option>
-            <option value="Y">유효성 Y</option>
-            <option value="N">유효성 N</option>
-          </select>
-        </div>
-        <div class="col-2">
-          <button class="btn-dark" onclick="sortTankByDue()">임박순 정렬</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>설비명</th>
-              <th>관리부서</th>
-              <th>공정</th>
-              <th>저장물질</th>
-              <th>허가용량</th>
-              <th>차기 중간검사</th>
-              <th>차기 정기검사</th>
-              <th>가장 빠른 검사</th>
-              <th>D-Day</th>
-              <th>상태</th>
-              <th>유효성</th>
-            </tr>
-          </thead>
-          <tbody id="tankBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="card span-12">
-      <h2>소화기 점검 Checklist</h2>
-
-      <div class="form-grid">
-        <div class="col-2">
-          <label>점검일</label>
-          <input id="feDate" type="date">
-        </div>
-        <div class="col-2">
-          <label>점검자</label>
-          <input id="feInspector" placeholder="예: Sam">
-        </div>
-        <div class="col-2">
-          <label>소화기 번호</label>
-          <input id="feNo" placeholder="예: FE-001">
-        </div>
-        <div class="col-3">
-          <label>위치</label>
-          <input id="feLocation" placeholder="예: Tankfarm 입구">
-        </div>
-        <div class="col-3">
-          <label>결과</label>
-          <select id="feResult">
-            <option>양호</option>
-            <option>조치필요</option>
-            <option>교체필요</option>
-          </select>
-        </div>
-
-        <div class="col-3">
-          <label>압력상태</label>
-          <select id="fePressure">
-            <option>양호</option>
-            <option>부족</option>
-            <option>확인필요</option>
-          </select>
-        </div>
-        <div class="col-3">
-          <label>봉인상태</label>
-          <select id="feSeal">
-            <option>양호</option>
-            <option>훼손</option>
-            <option>없음</option>
-          </select>
-        </div>
-        <div class="col-3">
-          <label>외관상태</label>
-          <select id="feBody">
-            <option>양호</option>
-            <option>부식</option>
-            <option>손상</option>
-          </select>
-        </div>
-        <div class="col-3">
-          <label>장애물 여부</label>
-          <select id="feObstacle">
-            <option>없음</option>
-            <option>있음</option>
-          </select>
-        </div>
-
-        <div class="col-10">
-          <label>비고</label>
-          <input id="feRemark" placeholder="필요 시 조치내용 입력">
-        </div>
-        <div class="col-2" style="display:flex;align-items:end;">
-          <button class="btn-green" onclick="addFireCheck()">점검 저장</button>
-        </div>
-      </div>
-
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <button class="btn-dark" onclick="downloadFireCsv()">Excel용 CSV 다운로드</button>
-        <button class="btn-red" onclick="clearFireChecks()">전체 기록 삭제</button>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>점검일</th>
-              <th>점검자</th>
-              <th>소화기 번호</th>
-              <th>위치</th>
-              <th>압력</th>
-              <th>봉인</th>
-              <th>외관</th>
+    </div>
+  );
+}
