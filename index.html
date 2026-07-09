@@ -1,11 +1,947 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>황삼영의 첫 웹앱</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BASF Yeosu EHS Dashboard</title>
+
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #17202a;
+      --muted: #6b7280;
+      --green: #16a34a;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --yellow: #f59e0b;
+      --gray: #e5e7eb;
+      --dark: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      background: linear-gradient(135deg, #102a43, #1e3a8a);
+      color: white;
+      padding: 24px 28px;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    header p {
+      margin: 8px 0 0;
+      opacity: 0.9;
+      font-size: 14px;
+    }
+
+    main {
+      padding: 20px;
+      max-width: 1500px;
+      margin: auto;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.06);
+      border: 1px solid #eef0f3;
+    }
+
+    .span-4 {
+      grid-column: span 4;
+    }
+
+    .span-6 {
+      grid-column: span 6;
+    }
+
+    .span-8 {
+      grid-column: span 8;
+    }
+
+    .span-12 {
+      grid-column: span 12;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 20px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .muted {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .stat-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      flex: 1;
+      min-width: 130px;
+      background: #f9fafb;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .stat .label {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .stat .value {
+      margin-top: 6px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      color: white;
+      font-weight: bold;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .green {
+      background: var(--green);
+    }
+
+    .blue {
+      background: var(--blue);
+    }
+
+    .red {
+      background: var(--red);
+    }
+
+    .yellow {
+      background: var(--yellow);
+      color: #111827;
+    }
+
+    .gray {
+      background: #6b7280;
+    }
+
+    input, select, button, textarea {
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: white;
+    }
+
+    textarea {
+      resize: vertical;
+      min-height: 70px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-primary {
+      background: #1d4ed8;
+      color: white;
+    }
+
+    .btn-dark {
+      background: var(--dark);
+      color: white;
+    }
+
+    .btn-red {
+      background: var(--red);
+      color: white;
+    }
+
+    .btn-light {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .col-3 { grid-column: span 3; }
+    .col-4 { grid-column: span 4; }
+    .col-5 { grid-column: span 5; }
+    .col-6 { grid-column: span 6; }
+    .col-8 { grid-column: span 8; }
+    .col-12 { grid-column: span 12; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: bold;
+      color: #374151;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .table-wrap {
+      max-height: 420px;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+    }
+
+    .tdl-item {
+      display: grid;
+      grid-template-columns: 38px 1fr 100px 110px 90px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      background: #fff;
+    }
+
+    .tdl-done {
+      opacity: 0.55;
+      text-decoration: line-through;
+    }
+
+    .small {
+      font-size: 12px;
+    }
+
+    .footer-note {
+      margin-top: 22px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 900px) {
+      .span-4, .span-6, .span-8, .span-12 {
+        grid-column: span 12;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .col-3, .col-4, .col-5, .col-6, .col-8, .col-12 {
+        grid-column: span 1;
+      }
+
+      .tdl-item {
+        grid-template-columns: 30px 1fr;
+      }
+
+      .tdl-item > div,
+      .tdl-item > button {
+        grid-column: span 2;
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <h1>안녕하세요!</h1>
-    <h2>황삼영의 첫 GitHub 웹앱입니다.</h2>
-    <p>BASF EHS Manager</p>
-</body>
-</html>
+  <header>
+    <h1>BASF Yeosu EHS Dashboard</h1>
+    <p>설비 검사일 · 위험물 저장량 · TDL · 여수 실시간 날씨 통합 관리 화면</p>
+  </header>
+
+  <main>
+    <div class="grid">
+
+      <!-- 날씨 -->
+      <section class="card span-4">
+        <h2>여수 실시간 날씨</h2>
+        <div id="weatherStatus" class="muted">날씨 정보를 불러오는 중...</div>
+
+        <div class="stat-row" style="margin-top:14px;">
+          <div class="stat">
+            <div class="label">기온</div>
+            <div class="value" id="temp">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">습도</div>
+            <div class="value" id="humidity">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">풍속</div>
+            <div class="value" id="wind">-</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <span id="weatherAlert" class="badge gray">확인 중</span>
+        </div>
+
+        <p class="muted" style="margin-top:12px;">
+          기준 위치: 여수시 좌표 약 34.7606, 127.6622
+        </p>
+      </section>
+
+      <!-- KPI -->
+      <section class="card span-8">
+        <h2>설비 검사 현황 요약</h2>
+        <div class="stat-row">
+          <div class="stat">
+            <div class="label">등록 설비</div>
+            <div class="value" id="totalTanks">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">유효성 Y</div>
+            <div class="value" id="validY">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">유효성 N</div>
+            <div class="value" id="validN">-</div>
+          </div>
+          <div class="stat">
+            <div class="label">검사 임박/초과</div>
+            <div class="value" id="urgentInspection">-</div>
+          </div>
+        </div>
+
+        <p class="muted" style="margin-top:12px;">
+          검사 임박 기준: 차기 중간검사일 또는 차기 정기검사일 중 빠른 날짜 기준 30일 이하 또는 초과
+        </p>
+      </section>
+
+      <!-- 위험물 저장량 계산기 -->
+      <section class="card span-4">
+        <h2>위험물 저장량 계산기</h2>
+
+        <div class="form-row">
+          <div class="col-12">
+            <label>설비 선택</label>
+            <select id="tankSelect"></select>
+          </div>
+
+          <div class="col-6">
+            <label>허가용량</label>
+            <input id="permitCapacity" type="number" placeholder="자동입력 또는 직접입력">
+          </div>
+
+          <div class="col-6">
+            <label>현재 저장량</label>
+            <input id="currentStorage" type="number" placeholder="예: 850">
+          </div>
+
+          <div class="col-12">
+            <button class="btn-primary" onclick="calculateStorage()">저장량 계산</button>
+          </div>
+        </div>
+
+        <div id="storageResult" style="margin-top:12px;"></div>
+
+        <p class="muted">
+          기준: 80% 미만 정상, 80~95% 주의, 95% 이상 경고로 표시
+        </p>
+      </section>
+
+      <!-- TDL -->
+      <section class="card span-8">
+        <h2>TDL / To Do List</h2>
+
+        <div class="form-row">
+          <div class="col-5">
+            <label>업무명</label>
+            <input id="todoTitle" type="text" placeholder="예: 위험물 변경신고 검토">
+          </div>
+
+          <div class="col-3">
+            <label>Due Date</label>
+            <input id="todoDue" type="date">
+          </div>
+
+          <div class="col-3">
+            <label>구분</label>
+            <select id="todoCategory">
+              <option value="위험물">위험물</option>
+              <option value="소방">소방</option>
+              <option value="PSM">PSM</option>
+              <option value="ER">ER</option>
+              <option value="교육">교육</option>
+              <option value="공통">공통</option>
+            </select>
+          </div>
+
+          <div class="col-1" style="display:flex;align-items:end;">
+            <button class="btn-primary" onclick="addTodo()">추가</button>
+          </div>
+
+          <div class="col-12">
+            <label>메모</label>
+            <textarea id="todoMemo" placeholder="필요 시 메모 입력"></textarea>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <button class="btn-light" onclick="filterTodos('all')">전체</button>
+          <button class="btn-light" onclick="filterTodos('open')">미완료</button>
+          <button class="btn-light" onclick="filterTodos('done')">완료</button>
+          <button class="btn-red" onclick="clearDoneTodos()">완료 항목 삭제</button>
+        </div>
+
+        <div id="todoList"></div>
+
+        <p class="muted">
+          색상 기준: D-3 이하 빨강, D-7 이하 파랑, 그 이상 초록. 입력한 TDL은 이 브라우저에 저장됩니다.
+        </p>
+      </section>
+
+      <!-- 설비 검사 Tracker -->
+      <section class="card span-12">
+        <h2>설비 검사 Tracker</h2>
+
+        <div class="form-row">
+          <div class="col-4">
+            <input id="searchInput" type="text" placeholder="설비명, 부서, 물질명 검색" oninput="renderTankTable()">
+          </div>
+
+          <div class="col-3">
+            <select id="statusFilter" onchange="renderTankTable()">
+              <option value="all">전체 상태</option>
+              <option value="red">초과/30일 이하</option>
+              <option value="blue">90일 이하</option>
+              <option value="green">90일 초과</option>
+            </select>
+          </div>
+
+          <div class="col-3">
+            <select id="validFilter" onchange="renderTankTable()">
+              <option value="all">유효성 전체</option>
+              <option value="Y">유효성 Y</option>
+              <option value="N">유효성 N</option>
+            </select>
+          </div>
+
+          <div class="col-2">
+            <button class="btn-dark" onclick="sortByDue()">임박순 정렬</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>설비명</th>
+                <th>관리부서</th>
+                <th>공정</th>
+                <th>저장물질</th>
+                <th>허가용량</th>
+                <th>차기 중간검사</th>
+                <th>차기 정기검사</th>
+                <th>가장 빠른 검사</th>
+                <th>D-Day</th>
+                <th>상태</th>
+                <th>유효성</th>
+              </tr>
+            </thead>
+            <tbody id="tankTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </div>
+
+    <p class="footer-note">
+      ※ 본 페이지는 GitHub Pages 기반의 정적 웹앱 예시입니다. 실제 회사 내부 정보 사용 시 공개 범위와 정보보안 기준을 먼저 확인하십시오.
+    </p>
+  </main>
+
+  <script>
+    // ==============================
+    // 1. 설비 데이터
+    // ==============================
+    const tanks = [
+      {
+        no: 1,
+        tag: "TK1920A",
+        dept: "Aniline 생산팀",
+        process: "",
+        material: "ANILINE",
+        permit: 1300000,
+        nextMid: "2030-06-30",
+        nextRegular: "2027-09-06",
+        valid: "Y"
+      },
+      {
+        no: 2,
+        tag: "TK1920B",
+        dept: "Aniline 생산팀",
+        process: "",
+        material: "ANILINE",
+        permit: 1300000,
+        nextMid: "2030-06-30",
+        nextRegular: "2027-10-05",
+        valid: "Y"
+      },
+      {
+        no: 3,
+        tag: "TK1920C",
+        dept: "Aniline 생산팀",
+        process: "Tankfarm(Aniline)",
+        material: "MNB",
+        permit: 1300000,
+        nextMid: "2030-06-30",
+        nextRegular: "",
+        valid: "N"
+      },
+      {
+        no: 4,
+        tag: "TK2535",
+        dept: "MDI 생산팀",
+        process: "",
+        material: "MDI",
+        permit: 3800000,
+        nextMid: "2026-06-21",
+        nextRegular: "2030-06-30",
+        valid: "Y"
+      },
+      {
+        no: 5,
+        tag: "TK8821",
+        dept: "TDI 생산팀",
+        process: "",
+        material: "TDI",
+        permit: 4479000,
+        nextMid: "2030-06-30",
+        nextRegular: "2027-04-03",
+        valid: "Y"
+      },
+      {
+        no: 6,
+        tag: "TK2534",
+        dept: "MDI 생산팀",
+        process: "",
+        material: "MDI",
+        permit: 4728,
+        nextMid: "2028-12-12",
+        nextRegular: "2036-12-12",
+        valid: "N"
+      },
+      {
+        no: 7,
+        tag: "TK009",
+        dept: "DNT 생산팀",
+        process: "",
+        material: "TOLUENE",
+        permit: 1878000,
+        nextMid: "2029-03-07",
+        nextRegular: "2036-03-07",
+        valid: "N"
+      },
+      {
+        no: 8,
+        tag: "TK001",
+        dept: "DNT 생산팀",
+        process: "",
+        material: "HNO3",
+        permit: 1102000,
+        nextMid: "2028-11-15",
+        nextRegular: "2031-11-12",
+        valid: "Y"
+      },
+      {
+        no: 9,
+        tag: "TK8825",
+        dept: "TDI 생산팀",
+        process: "",
+        material: "TDI",
+        permit: 565000,
+        nextMid: "2028-11-25",
+        nextRegular: "2031-11-18",
+        valid: "Y"
+      },
+      {
+        no: 10,
+        tag: "TK8822",
+        dept: "TDI 생산팀",
+        process: "",
+        material: "TDI",
+        permit: 565000,
+        nextMid: "2028-11-25",
+        nextRegular: "2031-11-18",
+        valid: "Y"
+      },
+      {
+        no: 11,
+        tag: "TK8823",
+        dept: "TDI 생산팀",
+        process: "",
+        material: "TDI",
+        permit: 565000,
+        nextMid: "2028-11-25",
+        nextRegular: "2031-11-18",
+        valid: "Y"
+      },
+      {
+        no: 12,
+        tag: "TK1920E",
+        dept: "Aniline 생산팀",
+        process: "",
+        material: "",
+        permit: 1987800,
+        nextMid: "2028-04-17",
+        nextRegular: "2036-04-17",
+        valid: "Y"
+      },
+      {
+        no: 13,
+        tag: "TK1922",
+        dept: "Aniline 생산팀",
+        process: "",
+        material: "BENZENE",
+        permit: 625000,
+        nextMid: "2027-12-12",
+        nextRegular: "2029-12-10",
+        valid: "Y"
+      },
+      {
+        no: 14,
+        tag: "TK1923B",
+        dept: "Aniline 생산팀",
+        process: "",
+        material: "MNB",
+        permit: 510000,
+        nextMid: "2027-12-12",
+        nextRegular: "2030-06-17",
+        valid: "Y"
+      },
+      {
+        no: 15,
+        tag: "TK2536",
+        dept: "MDI 생산팀",
+        process: "",
+        material: "MDI",
+        permit: 972000,
+        nextMid: "2027-12-12",
+        nextRegular: "2029-10-30",
+        valid: "Y"
+      },
+      {
+        no: 16,
+        tag: "TK2537",
+        dept: "MDI 생산팀",
+        process: "",
+        material: "MDI",
+        permit: 972000,
+        nextMid: "2028-04-09",
+        nextRegular: "2031-04-03",
+        valid: "Y"
+      },
+      {
+        no: 17,
+        tag: "TK2516",
+        dept: "MDI 생산팀",
+        process: "",
+        material: "ANILINE",
+        permit: 966000,
+        nextMid: "2027-12-12",
+        nextRegular: "2029-12-16",
+        valid: "Y"
+      },
+      {
+        no: 18,
+        tag: "TK2539",
+        dept: "MDI 생산팀",
+        process: "",
+        material: "MDI",
+        permit: 955000,
+        nextMid: "2027-12-12",
+        nextRegular: "2030-04-10",
+        valid: "Y"
+      }
+    ];
+
+    let sortDueAsc = true;
+    let todoFilter = "all";
+
+    // ==============================
+    // 2. 공통 날짜 함수
+    // ==============================
+    function todayOnly() {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    }
+
+    function daysUntil(dateString) {
+      if (!dateString) return null;
+      const target = new Date(dateString + "T00:00:00");
+      const today = todayOnly();
+      const diff = target - today;
+      return Math.ceil(diff / (1000 * 60 * 60 * 24));
+    }
+
+    function formatDday(days) {
+      if (days === null) return "-";
+      if (days < 0) return "초과 " + Math.abs(days) + "일";
+      if (days === 0) return "D-Day";
+      return "D-" + days;
+    }
+
+    function getInspectionStatus(days) {
+      if (days === null) return { color: "gray", text: "날짜없음" };
+      if (days < 0) return { color: "red", text: "검사초과" };
+      if (days <= 30) return { color: "red", text: "30일 이하" };
+      if (days <= 90) return { color: "blue", text: "90일 이하" };
+      return { color: "green", text: "정상" };
+    }
+
+    function getTodoStatus(days) {
+      if (days === null) return { color: "gray", text: "날짜없음" };
+      if (days < 0) return { color: "red", text: "기한초과" };
+      if (days <= 3) return { color: "red", text: "3일 이하" };
+      if (days <= 7) return { color: "blue", text: "7일 이하" };
+      return { color: "green", text: "여유" };
+    }
+
+    function earliestInspection(tank) {
+      const dates = [tank.nextMid, tank.nextRegular].filter(Boolean);
+      if (dates.length === 0) return "";
+      dates.sort();
+      return dates[0];
+    }
+
+    // ==============================
+    // 3. 날씨 API
+    // ==============================
+    async function loadWeather() {
+      const lat = 34.7606;
+      const lon = 127.6622;
+
+      const url =
+        "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=" + lat +
+        "&longitude=" + lon +
+        "&current=temperature_2m,relative_humidity_2m,wind_speed_10m,precipitation,weather_code" +
+        "&timezone=Asia%2FSeoul";
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        const current = data.current;
+
+        document.getElementById("temp").innerText = current.temperature_2m + "℃";
+        document.getElementById("humidity").innerText = current.relative_humidity_2m + "%";
+        document.getElementById("wind").innerText = current.wind_speed_10m + " km/h";
+
+        document.getElementById("weatherStatus").innerText =
+          "업데이트 시간: " + current.time;
+
+        let alertText = "정상";
+        let alertClass = "green";
+
+        if (current.temperature_2m >= 33) {
+          alertText = "폭염 작업 주의";
+          alertClass = "red";
+        } else if (current.temperature_2m >= 30) {
+          alertText = "고온 작업 주의";
+          alertClass = "yellow";
+        } else if (current.precipitation > 0) {
+          alertText = "강수 확인 필요";
+          alertClass = "blue";
+        }
+
+        const alertEl = document.getElementById("weatherAlert");
+        alertEl.className = "badge " + alertClass;
+        alertEl.innerText = alertText;
+
+      } catch (error) {
+        document.getElementById("weatherStatus").innerText =
+          "날씨 정보를 불러오지 못했습니다.";
+        document.getElementById("weatherAlert").className = "badge red";
+        document.getElementById("weatherAlert").innerText = "API 오류";
+      }
+    }
+
+    // ==============================
+    // 4. 설비 검사 테이블
+    // ==============================
+    function renderTankTable() {
+      const tbody = document.getElementById("tankTableBody");
+      const search = document.getElementById("searchInput").value.toLowerCase();
+      const statusFilter = document.getElementById("statusFilter").value;
+      const validFilter = document.getElementById("validFilter").value;
+
+      tbody.innerHTML = "";
+
+      let filtered = [...tanks];
+
+      filtered = filtered.filter(t => {
+        const text = (t.tag + " " + t.dept + " " + t.process + " " + t.material).toLowerCase();
+        return text.includes(search);
+      });
+
+      filtered = filtered.filter(t => {
+        if (validFilter === "all") return true;
+        return t.valid === validFilter;
+      });
+
+      filtered = filtered.filter(t => {
+        if (statusFilter === "all") return true;
+        const dueDate = earliestInspection(t);
+        const days = daysUntil(dueDate);
+        const status = getInspectionStatus(days);
+        return status.color === statusFilter;
+      });
+
+      filtered.forEach(t => {
+        const dueDate = earliestInspection(t);
+        const days = daysUntil(dueDate);
+        const status = getInspectionStatus(days);
+
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+          <td>${t.no}</td>
+          <td><b>${t.tag}</b></td>
+          <td>${t.dept || "-"}</td>
+          <td>${t.process || "-"}</td>
+          <td>${t.material || "-"}</td>
+          <td>${Number(t.permit).toLocaleString()}</td>
+          <td>${t.nextMid || "-"}</td>
+          <td>${t.nextRegular || "-"}</td>
+          <td>${dueDate || "-"}</td>
+          <td>${formatDday(days)}</td>
+          <td><span class="badge ${status.color}">${status.text}</span></td>
+          <td>${t.valid}</td>
+        `;
+
+        tbody.appendChild(tr);
+      });
+
+      updateKpi();
+    }
+
+    function sortByDue() {
+      tanks.sort((a, b) => {
+        const da = daysUntil(earliestInspection(a));
+        const db = daysUntil(earliestInspection(b));
+
+        const aa = da === null ? 999999 : da;
+        const bb = db === null ? 999999 : db;
+
+        return sortDueAsc ? aa - bb : bb - aa;
+      });
+
+      sortDueAsc = !sortDueAsc;
+      renderTankTable();
+    }
+
+    function updateKpi() {
+      const total = tanks.length;
+      const y = tanks.filter(t => t.valid === "Y").length;
+      const n = tanks.filter(t => t.valid === "N").length;
+
+      const urgent = tanks.filter(t => {
+        const days = daysUntil(earliestInspection(t));
+        return days !== null && days <= 30;
+      }).length;
+
+      document.getElementById("totalTanks").innerText = total;
+      document.getElementById("validY").innerText = y;
+      document.getElementById("validN").innerText = n;
+      document.getElementById("urgentInspection").innerText = urgent;
+    }
+
+    // ==============================
+    // 5. 위험물 저장량 계산
+    // ==============================
+    function populateTankSelect() {
+      const select = document.getElementById("tankSelect");
+      select.innerHTML = "";
+
+      tanks.forEach(t => {
+        const option = document.createElement("option");
+        option.value = t.tag;
+        option.innerText = `${t.tag} / ${t.material || "물질명 없음"} / ${Number(t.permit).toLocaleString()}`;
+        select.appendChild(option);
+      });
+
+      select.addEventListener("change", () => {
+        const selected = tanks.find(t => t.tag === select.value);
+        if (selected) {
+          document.getElementById("permitCapacity").value = selected.permit;
+        }
+      });
+
+      if (tanks.length > 0) {
+        document.getElementById("permitCapacity").value = tanks[0].permit;
+      }
+    }
+
+    function calculateStorage() {
+      const permit = Number(document.getElementById("permitCapacity").value);
+      const current = Number(document.getElementById("currentStorage").value);
+
+      const result = document.getElementById("storageResult");
+
+      if (!permit || permit <= 0 || current < 0) {
+        result.innerHTML = `<span class="badge red">입력값 확인 필요</span>`;
+        return;
+      }
+
+      const percent = (current / permit * 100).toFixed(1);
+
+      let color = "green";
+      let text = "정상";
+
+      if (percent >= 95) {
