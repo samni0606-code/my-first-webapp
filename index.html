@@ -1,455 +1,337 @@
 
-import React, { useEffect, useMemo, useState } from "react";
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>옥외탱크저장소 정기검사 F/U</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --dark: #0f172a;
+      --blue: #2563eb;
+      --green: #059669;
+      --amber: #d97706;
+      --red: #dc2626;
+      --slate: #475569;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .wrap { max-width: 1500px; margin: 0 auto; padding: 22px; }
+    .hero {
+      background: linear-gradient(135deg, #020617, #1e293b);
+      color: white;
+      border-radius: 26px;
+      padding: 26px;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, .18);
+    }
+    .hero-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+    .eyebrow { margin: 0 0 8px; color: #cbd5e1; font-size: 14px; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 44px); letter-spacing: -0.04em; }
+    .hero-desc { margin: 10px 0 0; color: #cbd5e1; font-size: 15px; }
+    .cards { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; margin-top: 22px; }
+    .metric { background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); border-radius: 18px; padding: 14px; }
+    .metric .num { font-size: 28px; font-weight: 800; }
+    .metric .label { color: #cbd5e1; font-size: 12px; margin-top: 3px; }
+    .panel {
+      margin-top: 20px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      padding: 18px;
+      box-shadow: 0 6px 16px rgba(15,23,42,.06);
+    }
+    .toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 14px; }
+    .toolbar-left, .toolbar-right { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    input, select, button, textarea {
+      font-family: inherit;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      padding: 10px 12px;
+      font-size: 14px;
+      background: white;
+    }
+    input[type="search"] { width: min(360px, 78vw); }
+    button { cursor: pointer; font-weight: 700; }
+    .btn-dark { background: var(--dark); color: white; border-color: var(--dark); }
+    .btn-blue { background: var(--blue); color: white; border-color: var(--blue); }
+    .btn-light { background: #f8fafc; color: var(--text); }
+    .btn-red { background: #fee2e2; color: #991b1b; border-color: #fecaca; }
+    .note { color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 18px; }
+    table { width: 100%; border-collapse: collapse; min-width: 1180px; }
+    th, td { padding: 11px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; font-size: 13px; }
+    th { background: #f8fafc; color: #334155; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #f8fafc; }
+    td input, td select { width: 100%; min-width: 88px; padding: 8px; font-size: 13px; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; padding: 5px 9px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .ok { background: #dcfce7; color: #166534; }
+    .soon { background: #fef3c7; color: #92400e; }
+    .over { background: #fee2e2; color: #991b1b; }
+    .blank { background: #e2e8f0; color: #334155; }
+    .row-actions { display: flex; gap: 6px; align-items: center; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.56); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 50; }
+    .modal { width: min(720px, 100%); background: white; border-radius: 24px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.3); }
+    .modal h2 { margin: 0 0 8px; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+    .form-grid label { font-size: 12px; color: var(--muted); font-weight: 700; }
+    .form-grid .field { display: grid; gap: 4px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    .footer { margin-top: 14px; display: flex; justify-content: flex-end; gap: 8px; }
+    @media (max-width: 900px) {
+      .cards { grid-template-columns: repeat(2, 1fr); }
+      .form-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">BASF Yeosu EHS Working Tool</p>
+          <h1>옥외탱크저장소 정기검사 F/U</h1>
+          <p class="hero-desc">정기검사 대상 탱크만 관리 · 정기/중간/정밀 검사일 F/U · 잔여일 자동 계산</p>
+        </div>
+        <button class="btn-blue" onclick="openAddModal()">+ 탱크 추가</button>
+      </div>
+      <div class="cards">
+        <div class="metric"><div class="num" id="mTotal">0</div><div class="label">대상 탱크</div></div>
+        <div class="metric"><div class="num" id="mOver">0</div><div class="label">기한초과</div></div>
+        <div class="metric"><div class="num" id="mSoon90">0</div><div class="label">90일 이내</div></div>
+        <div class="metric"><div class="num" id="mSoon180">0</div><div class="label">180일 이내</div></div>
+        <div class="metric"><div class="num" id="mDone">0</div><div class="label">완료 표시</div></div>
+      </div>
+    </header>
 
+    <section class="panel">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input id="search" type="search" placeholder="Tank No, 물질, 허가번호, 팀 검색" oninput="render()" />
+          <select id="statusFilter" onchange="render()">
+            <option value="all">전체 상태</option>
+            <option value="over">기한초과</option>
+            <option value="soon90">90일 이내</option>
+            <option value="soon180">180일 이내</option>
+            <option value="ok">정상</option>
+            <option value="blank">날짜 미입력</option>
+          </select>
+          <select id="teamFilter" onchange="render()"><option value="all">전체 팀</option></select>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-light" onclick="exportCsv()">CSV 내보내기</button>
+          <button class="btn-light" onclick="resetData()">초기 데이터로 복원</button>
+        </div>
+      </div>
+      <p class="note">※ 기본 데이터는 50만 L 이상 정기검사 대상 자료를 기준으로 넣었습니다. 현장 최신 결과가 바뀌면 표에서 직접 날짜를 수정하면 브라우저에 자동 저장됩니다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>상태</th>
+              <th>잔여일</th>
+              <th>팀/Area</th>
+              <th>Tank No.</th>
+              <th>저장품명</th>
+              <th>허가번호</th>
+              <th>허가량</th>
+              <th>최근 정기검사일</th>
+              <th>중간정기검사일</th>
+              <th>정밀정기검사일</th>
+              <th>다음 F/U일</th>
+              <th>비고</th>
+              <th>관리</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
 
-const STORAGE_KEYS = {
-  tdl: "ehs_dashboard_tdl_items_v1",
-  tanks: "ehs_dashboard_tank_inspections_v1",
-};
-
-
-const WEATHER_CODE = {
-  0: "맑음",
-  1: "대체로 맑음",
-  2: "부분 흐림",
-  3: "흐림",
-  45: "안개",
-  48: "착빙 안개",
-  51: "약한 이슬비",
-  53: "이슬비",
-  55: "강한 이슬비",
-  61: "약한 비",
-  63: "비",
-  65: "강한 비",
-  71: "약한 눈",
-  73: "눈",
-  75: "강한 눈",
-  80: "약한 소나기",
-  81: "소나기",
-  82: "강한 소나기",
-  95: "뇌우",
-};
-
-
-function loadLocalStorage(key, fallback) {
-  try {
-    const saved = localStorage.getItem(key);
-    return saved ? JSON.parse(saved) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-
-function saveLocalStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Local storage may be blocked in some browsers.
-  }
-}
-
-
-function todayText() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-
-function getDaysUntil(dateText) {
-  if (!dateText) return null;
-  const today = new Date();
-  const target = new Date(`${dateText}T00:00:00`);
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((target - today) / (1000 * 60 * 60 * 24));
-}
-
-
-function getInspectionStatus(nextDate) {
-  const days = getDaysUntil(nextDate);
-  if (days === null) return { label: "미입력", color: "bg-slate-100 text-slate-700", daysText: "-" };
-  if (days < 0) return { label: "기한초과", color: "bg-red-100 text-red-700", daysText: `${Math.abs(days)}일 초과` };
-  if (days <= 30) return { label: "임박", color: "bg-amber-100 text-amber-700", daysText: `${days}일 남음` };
-  return { label: "정상", color: "bg-emerald-100 text-emerald-700", daysText: `${days}일 남음` };
-}
-
-
-const initialTdlForm = {
-  title: "",
-  owner: "",
-  dueDate: "",
-  priority: "보통",
-  status: "Open",
-  memo: "",
-};
-
-
-const initialTankForm = {
-  tankNo: "",
-  area: "",
-  material: "",
-  capacity: "",
-  lastInspection: "",
-  cycleMonths: "12",
-  nextInspection: "",
-  memo: "",
-};
-
-
-export default function EHSDashboard() {
-  const [tdlItems, setTdlItems] = useState(() => loadLocalStorage(STORAGE_KEYS.tdl, []));
-  const [tankItems, setTankItems] = useState(() => loadLocalStorage(STORAGE_KEYS.tanks, []));
-  const [tdlForm, setTdlForm] = useState(initialTdlForm);
-  const [tankForm, setTankForm] = useState(initialTankForm);
-  const [tdlSearch, setTdlSearch] = useState("");
-  const [tankSearch, setTankSearch] = useState("");
-  const [weather, setWeather] = useState(null);
-  const [weatherError, setWeatherError] = useState("");
-  const [weatherLoading, setWeatherLoading] = useState(false);
-  useEffect(() => saveLocalStorage(STORAGE_KEYS.tdl, tdlItems), [tdlItems]);
-  useEffect(() => saveLocalStorage(STORAGE_KEYS.tanks, tankItems), [tankItems]);
-  useEffect(() => {
-    fetchWeather();
-  }, []);
-
-
-  function fetchWeather() {
-    setWeatherLoading(true);
-    setWeatherError("");
-
-
-    fetch("https://api.open-meteo.com/v1/forecast?latitude=34.7604&longitude=127.6622&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Asia%2FSeoul")
-      .then((res) => {
-        if (!res.ok) throw new Error("날씨 정보를 불러오지 못했습니다.");
-        return res.json();
-      })
-      .then((data) => {
-        setWeather({
-          temperature: data.current?.temperature_2m,
-          humidity: data.current?.relative_humidity_2m,
-          wind: data.current?.wind_speed_10m,
-          code: data.current?.weather_code,
-          time: data.current?.time,
-        });
-      })
-      .catch(() => setWeatherError("실시간 날씨 연결 실패. 인터넷 연결 또는 브라우저 보안 설정을 확인하세요."))
-      .finally(() => setWeatherLoading(false));
-  }
-
-
-  function addTdlItem() {
-    if (!tdlForm.title.trim()) return;
-    const newItem = {
-      id: crypto.randomUUID(),
-      createdAt: todayText(),
-      ...tdlForm,
-      title: tdlForm.title.trim(),
-    };
-    setTdlItems([newItem, ...tdlItems]);
-    setTdlForm(initialTdlForm);
-  }
-
-
-  function updateTdlStatus(id, status) {
-    setTdlItems((items) => items.map((item) => item.id === id ? { ...item, status } : item));
-  }
-
-
-  function deleteTdlItem(id) {
-    setTdlItems((items) => items.filter((item) => item.id !== id));
-  }
-
-
-  function calculateNextInspection(lastInspection, cycleMonths) {
-    if (!lastInspection || !cycleMonths) return "";
-    const next = new Date(`${lastInspection}T00:00:00`);
-    next.setMonth(next.getMonth() + Number(cycleMonths));
-    return next.toISOString().slice(0, 10);
-  }
-
-
-  function addTankItem() {
-    if (!tankForm.tankNo.trim()) return;
-    const calculatedNext = tankForm.nextInspection || calculateNextInspection(tankForm.lastInspection, tankForm.cycleMonths);
-    const newTank = {
-      id: crypto.randomUUID(),
-      ...tankForm,
-      tankNo: tankForm.tankNo.trim(),
-      nextInspection: calculatedNext,
-    };
-    setTankItems([newTank, ...tankItems]);
-    setTankForm(initialTankForm);
-  }
-
-
-  function deleteTankItem(id) {
-    setTankItems((items) => items.filter((item) => item.id !== id));
-  }
-
-
-  function markTankInspected(id) {
-    setTankItems((items) => items.map((item) => {
-      if (item.id !== id) return item;
-      const today = todayText();
-      return {
-        ...item,
-        lastInspection: today,
-        nextInspection: calculateNextInspection(today, item.cycleMonths || 12),
-      };
-    }));
-  }
-
-
-  const filteredTdlItems = useMemo(() => {
-    const q = tdlSearch.trim().toLowerCase();
-    if (!q) return tdlItems;
-    return tdlItems.filter((item) => [item.title, item.owner, item.status, item.priority, item.memo].join(" ").toLowerCase().includes(q));
-  }, [tdlItems, tdlSearch]);
-
-
-  const filteredTankItems = useMemo(() => {
-    const q = tankSearch.trim().toLowerCase();
-    if (!q) return tankItems;
-    return tankItems.filter((item) => [item.tankNo, item.area, item.material, item.capacity, item.memo].join(" ").toLowerCase().includes(q));
-  }, [tankItems, tankSearch]);
-
-
-  const tdlSummary = useMemo(() => ({
-    total: tdlItems.length,
-    open: tdlItems.filter((item) => item.status === "Open").length,
-    progress: tdlItems.filter((item) => item.status === "진행중").length,
-    done: tdlItems.filter((item) => item.status === "완료").length,
-  }), [tdlItems]);
-
-
-  const tankSummary = useMemo(() => ({
-    total: tankItems.length,
-    overdue: tankItems.filter((item) => getDaysUntil(item.nextInspection) < 0).length,
-    dueSoon: tankItems.filter((item) => {
-      const days = getDaysUntil(item.nextInspection);
-      return days !== null && days >= 0 && days <= 30;
-    }).length,
-  }), [tankItems]);
-
-
-  return (
-    <div className="min-h-screen bg-slate-100 p-4 md:p-8 text-slate-900">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <header className="rounded-3xl bg-slate-950 text-white p-6 shadow-lg">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-            <div>
-              <p className="text-sm text-slate-300">BASF Yeosu EHS Working Tool</p>
-              <h1 className="text-3xl md:text-4xl font-bold mt-1">EHS Dashboard V2</h1>
-              <p className="text-slate-300 mt-2">TDL 관리 · 탱크 검사기간 관리 · 여수 실시간 날씨</p>
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-2xl font-bold">{tdlSummary.open}</div>
-                <div className="text-xs text-slate-300">Open TDL</div>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-2xl font-bold">{tankSummary.dueSoon}</div>
-                <div className="text-xs text-slate-300">30일 이내</div>
-              </div>
-              <div className="rounded-2xl bg-white/10 p-3">
-                <div className="text-2xl font-bold">{tankSummary.overdue}</div>
-                <div className="text-xs text-slate-300">기한초과</div>
-              </div>
-            </div>
-          </div>
-        </header>
-        <section className="grid lg:grid-cols-3 gap-6">
-          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200 lg:col-span-2">
-            <div className="flex items-center justify-between gap-3 mb-5">
-              <div>
-                <h2 className="text-2xl font-bold">TDL 입력 · 저장 · 표시</h2>
-                <p className="text-sm text-slate-500">입력한 항목은 브라우저 LocalStorage에 자동 저장됩니다.</p>
-              </div>
-              <input
-                className="hidden md:block rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                placeholder="TDL 검색"
-                value={tdlSearch}
-                onChange={(e) => setTdlSearch(e.target.value)}
-              />
-            </div>
-            <div className="grid md:grid-cols-6 gap-3 mb-4">
-              <input className="md:col-span-2 rounded-xl border p-3" placeholder="할 일 / Action item" value={tdlForm.title} onChange={(e) => setTdlForm({ ...tdlForm, title: e.target.value })} />
-              <input className="rounded-xl border p-3" placeholder="담당자" value={tdlForm.owner} onChange={(e) => setTdlForm({ ...tdlForm, owner: e.target.value })} />
-              <input className="rounded-xl border p-3" type="date" value={tdlForm.dueDate} onChange={(e) => setTdlForm({ ...tdlForm, dueDate: e.target.value })} />
-              <select className="rounded-xl border p-3" value={tdlForm.priority} onChange={(e) => setTdlForm({ ...tdlForm, priority: e.target.value })}>
-                <option>낮음</option>
-                <option>보통</option>
-                <option>높음</option>
-                <option>긴급</option>
-              </select>
-              <button className="rounded-xl bg-slate-950 text-white font-semibold px-4 py-3 hover:bg-slate-800" onClick={addTdlItem}>추가</button>
-              <textarea className="md:col-span-6 rounded-xl border p-3 min-h-20" placeholder="메모 / 진행사항" value={tdlForm.memo} onChange={(e) => setTdlForm({ ...tdlForm, memo: e.target.value })} />
-            </div>
-            <input
-              className="md:hidden w-full rounded-xl border border-slate-300 px-3 py-2 text-sm mb-4"
-              placeholder="TDL 검색"
-              value={tdlSearch}
-              onChange={(e) => setTdlSearch(e.target.value)}
-            />
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-slate-50 text-left">
-                    <th className="p-3">상태</th>
-                    <th className="p-3">Action Item</th>
-                    <th className="p-3">담당</th>
-                    <th className="p-3">기한</th>
-                    <th className="p-3">우선순위</th>
-                    <th className="p-3">메모</th>
-                    <th className="p-3">관리</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTdlItems.length === 0 && (
-                    <tr><td className="p-5 text-center text-slate-400" colSpan="7">등록된 TDL이 없습니다.</td></tr>
-                  )}
-                  {filteredTdlItems.map((item) => (
-                    <tr key={item.id} className="border-b hover:bg-slate-50">
-                      <td className="p-3">
-                        <select className="rounded-lg border p-2" value={item.status} onChange={(e) => updateTdlStatus(item.id, e.target.value)}>
-                          <option>Open</option>
-                          <option>진행중</option>
-                          <option>완료</option>
-                          <option>보류</option>
-                        </select>
-                      </td>
-                      <td className="p-3 font-semibold">{item.title}</td>
-                      <td className="p-3">{item.owner || "-"}</td>
-                      <td className="p-3">{item.dueDate || "-"}</td>
-                      <td className="p-3">{item.priority}</td>
-                      <td className="p-3 max-w-xs truncate" title={item.memo}>{item.memo || "-"}</td>
-                      <td className="p-3">
-                        <button className="text-red-600 hover:underline" onClick={() => deleteTdlItem(item.id)}>삭제</button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-
-          <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-2xl font-bold">여수 날씨</h2>
-                <p className="text-sm text-slate-500">Yeosu 기준 실시간 기상 데이터</p>
-              </div>
-              <button className="rounded-xl border px-3 py-2 text-sm hover:bg-slate-50" onClick={fetchWeather}>새로고침</button>
-            </div>
-
-
-            <div className="mt-6 rounded-3xl bg-gradient-to-br from-sky-500 to-blue-700 text-white p-6 min-h-64 flex flex-col justify-between">
-              {weatherLoading && <p>날씨 불러오는 중...</p>}
-              {weatherError && <p className="text-sm bg-white/20 rounded-xl p-3">{weatherError}</p>}
-              {weather && !weatherLoading && !weatherError && (
-                <>
-                  <div>
-                    <div className="text-sm opacity-80">현재 날씨</div>
-                    <div className="text-6xl font-bold mt-2">{weather.temperature}℃</div>
-                    <div className="text-xl mt-2">{WEATHER_CODE[weather.code] || "날씨 코드 " + weather.code}</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-6 text-sm">
-                    <div className="rounded-2xl bg-white/15 p-3">
-                      <div className="opacity-75">습도</div>
-                      <div className="text-lg font-bold">{weather.humidity}%</div>
-                    </div>
-                    <div className="rounded-2xl bg-white/15 p-3">
-                      <div className="opacity-75">풍속</div>
-                      <div className="text-lg font-bold">{weather.wind} km/h</div>
-                    </div>
-                    <div className="rounded-2xl bg-white/15 p-3 col-span-2">
-                      <div className="opacity-75">업데이트</div>
-                      <div className="font-semibold">{weather.time?.replace("T", " ")}</div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
-
-
-        <section className="rounded-3xl bg-white p-6 shadow-sm border border-slate-200">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
-            <div>
-              <h2 className="text-2xl font-bold">탱크별 검사기간 관리</h2>
-              <p className="text-sm text-slate-500">최종검사일 + 검사주기 기준으로 다음 검사일을 자동 계산할 수 있습니다.</p>
-            </div>
-            <input
-              className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-              placeholder="탱크 검색"
-              value={tankSearch}
-              onChange={(e) => setTankSearch(e.target.value)}
-            />
-          </div>
-
-
-          <div className="grid md:grid-cols-8 gap-3 mb-4">
-            <input className="rounded-xl border p-3" placeholder="Tank No." value={tankForm.tankNo} onChange={(e) => setTankForm({ ...tankForm, tankNo: e.target.value })} />
-            <input className="rounded-xl border p-3" placeholder="Area" value={tankForm.area} onChange={(e) => setTankForm({ ...tankForm, area: e.target.value })} />
-            <input className="rounded-xl border p-3" placeholder="물질" value={tankForm.material} onChange={(e) => setTankForm({ ...tankForm, material: e.target.value })} />
-            <input className="rounded-xl border p-3" placeholder="용량(kL)" value={tankForm.capacity} onChange={(e) => setTankForm({ ...tankForm, capacity: e.target.value })} />
-            <input className="rounded-xl border p-3" type="date" value={tankForm.lastInspection} onChange={(e) => setTankForm({ ...tankForm, lastInspection: e.target.value, nextInspection: calculateNextInspection(e.target.value, tankForm.cycleMonths) })} />
-            <input className="rounded-xl border p-3" type="number" min="1" placeholder="주기(개월)" value={tankForm.cycleMonths} onChange={(e) => setTankForm({ ...tankForm, cycleMonths: e.target.value, nextInspection: calculateNextInspection(tankForm.lastInspection, e.target.value) })} />
-            <input className="rounded-xl border p-3" type="date" value={tankForm.nextInspection} onChange={(e) => setTankForm({ ...tankForm, nextInspection: e.target.value })} />
-            <button className="rounded-xl bg-slate-950 text-white font-semibold px-4 py-3 hover:bg-slate-800" onClick={addTankItem}>추가</button>
-            <input className="md:col-span-8 rounded-xl border p-3" placeholder="비고 / 검사 특이사항" value={tankForm.memo} onChange={(e) => setTankForm({ ...tankForm, memo: e.target.value })} />
-          </div>
-
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-slate-50 text-left">
-                  <th className="p-3">상태</th>
-                  <th className="p-3">Tank No.</th>
-                  <th className="p-3">Area</th>
-                  <th className="p-3">물질</th>
-                  <th className="p-3">용량</th>
-                  <th className="p-3">최종검사일</th>
-                  <th className="p-3">주기</th>
-                  <th className="p-3">다음검사일</th>
-                  <th className="p-3">잔여일</th>
-                  <th className="p-3">비고</th>
-                  <th className="p-3">관리</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTankItems.length === 0 && (
-                  <tr><td className="p-5 text-center text-slate-400" colSpan="11">등록된 탱크가 없습니다.</td></tr>
-                )}
-                {filteredTankItems.map((item) => {
-                  const status = getInspectionStatus(item.nextInspection);
-                  return (
-                    <tr key={item.id} className="border-b hover:bg-slate-50">
-                      <td className="p-3"><span className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${status.color}`}>{status.label}</span></td>
-                      <td className="p-3 font-semibold">{item.tankNo}</td>
-                      <td className="p-3">{item.area || "-"}</td>
-                      <td className="p-3">{item.material || "-"}</td>
-                      <td className="p-3">{item.capacity ? `${item.capacity} kL` : "-"}</td>
-                      <td className="p-3">{item.lastInspection || "-"}</td>
-                      <td className="p-3">{item.cycleMonths || "-"}개월</td>
-                      <td className="p-3">{item.nextInspection || "-"}</td>
-                      <td className="p-3 font-semibold">{status.daysText}</td>
-                      <td className="p-3 max-w-xs truncate" title={item.memo}>{item.memo || "-"}</td>
-                      <td className="p-3 whitespace-nowrap space-x-3">
-                        <button className="text-blue-700 hover:underline" onClick={() => markTankInspected(item.id)}>검사완료</button>
-                        <button className="text-red-600 hover:underline" onClick={() => deleteTankItem(item.id)}>삭제</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </section>
+  <div id="modalBackdrop" class="modal-backdrop">
+    <div class="modal">
+      <h2 id="modalTitle">탱크 추가</h2>
+      <p class="note">정기검사 대상 변동 시 여기서 추가/수정하세요. 다음 F/U일은 가장 가까운 검사 기한 기준으로 관리하면 됩니다.</p>
+      <div class="form-grid">
+        <div class="field"><label>팀/Area</label><input id="fTeam" /></div>
+        <div class="field"><label>Tank No.</label><input id="fTankNo" /></div>
+        <div class="field"><label>저장품명</label><input id="fMaterial" /></div>
+        <div class="field"><label>허가번호</label><input id="fPermit" /></div>
+        <div class="field"><label>허가량</label><input id="fCapacity" /></div>
+        <div class="field"><label>최근 정기검사일</label><input id="fRegular" type="date" /></div>
+        <div class="field"><label>중간정기검사일</label><input id="fIntermediate" type="date" /></div>
+        <div class="field"><label>정밀정기검사일</label><input id="fPrecision" type="date" /></div>
+        <div class="field"><label>다음 F/U일</label><input id="fNext" type="date" /></div>
+        <div class="field"><label>완료 여부</label><select id="fDone"><option value="false">미완료</option><option value="true">완료</option></select></div>
+        <div class="field full"><label>비고</label><textarea id="fMemo" rows="3"></textarea></div>
+      </div>
+      <div class="footer">
+        <button class="btn-light" onclick="closeModal()">취소</button>
+        <button class="btn-dark" onclick="saveModal()">저장</button>
       </div>
     </div>
-  );
-}
+  </div>
+
+  <script>
+    const STORAGE_KEY = "outdoor_tank_followup_v3";
+    const TODAY = new Date();
+    TODAY.setHours(0,0,0,0);
+    let editingId = null;
+
+    const initialTanks = [
+      { id: "TK2536", team: "MDI", tankNo: "TK2536", material: "MDI", permit: "제22-1389-920530호", capacity: "972 kL", regular: "2018-10-31", intermediate: "2023-12-31", precision: "2029-10-30", next: "2029-10-30", memo: "50만 L 이상", done: false },
+      { id: "TK2537", team: "MDI", tankNo: "TK2537", material: "MDI", permit: "제22-1390-920530호", capacity: "972 kL", regular: "2020-04-03", intermediate: "2024-04-03", precision: "2031-04-03", next: "2031-04-03", memo: "50만 L 이상", done: false },
+      { id: "TK2516", team: "MDI", tankNo: "TK2516", material: "Aniline", permit: "제22-1394-920530호", capacity: "966 kL", regular: "2018-12-17", intermediate: "2023-12-31", precision: "2029-12-16", next: "2029-12-16", memo: "50만 L 이상", done: false },
+      { id: "TK2539", team: "MDI", tankNo: "TK2539", material: "MDI", permit: "제22-2189-970317호", capacity: "955 kL", regular: "2019-04-11", intermediate: "2023-12-31", precision: "2030-04-10", next: "2030-04-10", memo: "50만 L 이상", done: false },
+      { id: "TK1922", team: "Aniline", tankNo: "TK1922", material: "Benzene", permit: "제22-1402-920530호", capacity: "625 kL", regular: "2018-12-11", intermediate: "2023-12-31", precision: "2029-12-10", next: "2029-12-10", memo: "50만 L 이상", done: false },
+      { id: "TK1923B", team: "Aniline", tankNo: "TK1923B", material: "MNB", permit: "제22-2302-970911호", capacity: "510 kL", regular: "2019-06-18", intermediate: "2023-12-31", precision: "2030-06-17", next: "2030-06-17", memo: "50만 L 이상", done: false },
+      { id: "TK8825", team: "TDI", tankNo: "TK8825", material: "TDI", permit: "제22-3328-030407호", capacity: "565 kL", regular: "", intermediate: "2020-12-31", precision: "", next: "2020-12-31", memo: "정기검사 후 4년 이내로 표기되어 있어 최신 검사일 확인 필요", done: false },
+      { id: "TK8822", team: "TDI", tankNo: "TK8822", material: "TDI", permit: "제22-3337-030415호", capacity: "565 kL", regular: "", intermediate: "2020-12-31", precision: "", next: "2020-12-31", memo: "정기검사 후 4년 이내로 표기되어 있어 최신 검사일 확인 필요", done: false },
+      { id: "TK8823", team: "TDI", tankNo: "TK8823", material: "TDI", permit: "제22-3338-030415호", capacity: "565 kL", regular: "", intermediate: "2020-12-31", precision: "", next: "2020-12-31", memo: "정기검사 후 4년 이내로 표기되어 있어 최신 검사일 확인 필요", done: false },
+      { id: "TK001", team: "DNT", tankNo: "TK001", material: "질산", permit: "제22-3326-030407호", capacity: "1102.3 kg", regular: "", intermediate: "2020-12-31", precision: "", next: "2020-12-31", memo: "정기검사 후 4년 이내로 표기되어 있어 최신 검사일 확인 필요", done: false },
+      { id: "TK8821", team: "TDI", tankNo: "TK8821", material: "TDI", permit: "제22-3336-030415호", capacity: "4479 kL", regular: "2016-04-04", intermediate: "2022-12-31", precision: "2027-04-03", next: "2027-04-03", memo: "100만 L 이상", done: false },
+      { id: "TK2535", team: "MDI", tankNo: "TK2535", material: "MDI", permit: "제22-3516-040618호", capacity: "3800 kL", regular: "2016-04-01", intermediate: "2022-12-31", precision: "2027-03-31", next: "2027-03-31", memo: "100만 L 이상", done: false },
+      { id: "TK009", team: "CCD", tankNo: "TK009", material: "Toluene", permit: "제22-3334-030415호", capacity: "1878 kL", regular: "2014-06-05", intermediate: "2022-12-31", precision: "2025-06-10", next: "2025-06-10", memo: "100만 L 이상", done: false },
+      { id: "TK1920A", team: "Aniline", tankNo: "TK1920A", material: "Aniline", permit: "제22-3521-040703호", capacity: "1300 kL", regular: "2016-09-07", intermediate: "2022-12-31", precision: "2027-09-06", next: "2027-09-06", memo: "100만 L 이상", done: false },
+      { id: "TK1920B", team: "Aniline", tankNo: "TK1920B", material: "Aniline", permit: "제22-3522-040703호", capacity: "1300 kL", regular: "2016-10-06", intermediate: "2022-12-31", precision: "2027-10-05", next: "2027-10-05", memo: "100만 L 이상", done: false },
+      { id: "TK1920C", team: "Aniline", tankNo: "TK1920C", material: "Aniline", permit: "제22-3522-040704호", capacity: "1300 kL", regular: "2015-02-05", intermediate: "2022-12-31", precision: "2025-02-04", next: "2025-02-04", memo: "100만 L 이상", done: false }
+    ];
+
+    function loadData() {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || initialTanks; }
+      catch { return initialTanks; }
+    }
+    function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(tanks)); }
+    let tanks = loadData();
+
+    function daysUntil(dateText) {
+      if (!dateText) return null;
+      const d = new Date(dateText + "T00:00:00");
+      return Math.ceil((d - TODAY) / 86400000);
+    }
+    function statusOf(tank) {
+      const days = daysUntil(tank.next);
+      if (days === null) return { key: "blank", label: "미입력", cls: "blank", daysText: "-" };
+      if (days < 0) return { key: "over", label: "기한초과", cls: "over", daysText: Math.abs(days) + "일 초과" };
+      if (days <= 90) return { key: "soon90", label: "90일 이내", cls: "soon", daysText: days + "일 남음" };
+      if (days <= 180) return { key: "soon180", label: "180일 이내", cls: "soon", daysText: days + "일 남음" };
+      return { key: "ok", label: "정상", cls: "ok", daysText: days + "일 남음" };
+    }
+    function esc(v) { return String(v ?? "").replace(/[&<>"]/g, s => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[s])); }
+    function updateField(id, field, value) {
+      tanks = tanks.map(t => t.id === id ? { ...t, [field]: value } : t);
+      saveData();
+      render(false);
+    }
+    function toggleDone(id) {
+      tanks = tanks.map(t => t.id === id ? { ...t, done: !t.done } : t);
+      saveData();
+      render();
+    }
+    function deleteTank(id) {
+      if (!confirm("삭제할까요?")) return;
+      tanks = tanks.filter(t => t.id !== id);
+      saveData();
+      render();
+    }
+    function buildTeamFilter() {
+      const sel = document.getElementById("teamFilter");
+      const current = sel.value;
+      const teams = [...new Set(tanks.map(t => t.team).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="all">전체 팀</option>' + teams.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+      sel.value = teams.includes(current) ? current : "all";
+    }
+    function render(rebuildTeam = true) {
+      if (rebuildTeam) buildTeamFilter();
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const sf = document.getElementById("statusFilter").value;
+      const tf = document.getElementById("teamFilter").value;
+      let view = tanks.map(t => ({ ...t, _st: statusOf(t) }));
+      if (q) view = view.filter(t => [t.team, t.tankNo, t.material, t.permit, t.capacity, t.memo].join(" ").toLowerCase().includes(q));
+      if (sf !== "all") view = view.filter(t => t._st.key === sf || (sf === "soon180" && ["soon90", "soon180"].includes(t._st.key)));
+      if (tf !== "all") view = view.filter(t => t.team === tf);
+      view.sort((a,b) => (daysUntil(a.next) ?? 99999) - (daysUntil(b.next) ?? 99999));
+
+      document.getElementById("tbody").innerHTML = view.map(t => `
+        <tr>
+          <td><span class="badge ${t._st.cls}">${t._st.label}</span></td>
+          <td><strong>${t._st.daysText}</strong></td>
+          <td><input value="${esc(t.team)}" onchange="updateField('${t.id}','team',this.value)" /></td>
+          <td><strong>${esc(t.tankNo)}</strong></td>
+          <td><input value="${esc(t.material)}" onchange="updateField('${t.id}','material',this.value)" /></td>
+          <td><input value="${esc(t.permit)}" onchange="updateField('${t.id}','permit',this.value)" /></td>
+          <td><input value="${esc(t.capacity)}" onchange="updateField('${t.id}','capacity',this.value)" /></td>
+          <td><input type="date" value="${esc(t.regular)}" onchange="updateField('${t.id}','regular',this.value)" /></td>
+          <td><input type="date" value="${esc(t.intermediate)}" onchange="updateField('${t.id}','intermediate',this.value)" /></td>
+          <td><input type="date" value="${esc(t.precision)}" onchange="updateField('${t.id}','precision',this.value)" /></td>
+          <td><input type="date" value="${esc(t.next)}" onchange="updateField('${t.id}','next',this.value)" /></td>
+          <td><input value="${esc(t.memo)}" onchange="updateField('${t.id}','memo',this.value)" /></td>
+          <td><div class="row-actions"><button class="btn-light" onclick="openEditModal('${t.id}')">수정</button><button class="btn-light" onclick="toggleDone('${t.id}')">${t.done ? "완료취소" : "완료"}</button><button class="btn-red" onclick="deleteTank('${t.id}')">삭제</button></div></td>
+        </tr>
+      `).join("") || `<tr><td colspan="13" style="text-align:center;color:#64748b;padding:28px;">검색 결과가 없습니다.</td></tr>`;
+
+      const all = tanks.map(t => ({...t, _st: statusOf(t)}));
+      document.getElementById("mTotal").textContent = tanks.length;
+      document.getElementById("mOver").textContent = all.filter(t => t._st.key === "over").length;
+      document.getElementById("mSoon90").textContent = all.filter(t => t._st.key === "soon90").length;
+      document.getElementById("mSoon180").textContent = all.filter(t => ["soon90", "soon180"].includes(t._st.key)).length;
+      document.getElementById("mDone").textContent = all.filter(t => t.done).length;
+    }
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById("modalTitle").textContent = "탱크 추가";
+      fillModal({ team:"", tankNo:"", material:"", permit:"", capacity:"", regular:"", intermediate:"", precision:"", next:"", memo:"", done:false });
+      document.getElementById("modalBackdrop").style.display = "flex";
+    }
+    function openEditModal(id) {
+      editingId = id;
+      document.getElementById("modalTitle").textContent = "탱크 수정";
+      fillModal(tanks.find(t => t.id === id));
+      document.getElementById("modalBackdrop").style.display = "flex";
+    }
+    function closeModal() { document.getElementById("modalBackdrop").style.display = "none"; }
+    function fillModal(t) {
+      fTeam.value = t.team || ""; fTankNo.value = t.tankNo || ""; fMaterial.value = t.material || ""; fPermit.value = t.permit || "";
+      fCapacity.value = t.capacity || ""; fRegular.value = t.regular || ""; fIntermediate.value = t.intermediate || ""; fPrecision.value = t.precision || "";
+      fNext.value = t.next || ""; fMemo.value = t.memo || ""; fDone.value = String(!!t.done);
+    }
+    function saveModal() {
+      const item = {
+        id: editingId || (fTankNo.value.trim() || crypto.randomUUID()),
+        team: fTeam.value.trim(), tankNo: fTankNo.value.trim(), material: fMaterial.value.trim(), permit: fPermit.value.trim(), capacity: fCapacity.value.trim(),
+        regular: fRegular.value, intermediate: fIntermediate.value, precision: fPrecision.value, next: fNext.value, memo: fMemo.value.trim(), done: fDone.value === "true"
+      };
+      if (!item.tankNo) { alert("Tank No.는 필수입니다."); return; }
+      tanks = editingId ? tanks.map(t => t.id === editingId ? item : t) : [item, ...tanks];
+      saveData(); closeModal(); render();
+    }
+    function resetData() {
+      if (!confirm("현재 수정내용을 지우고 초기 데이터로 복원할까요?")) return;
+      tanks = structuredClone(initialTanks);
+      saveData(); render();
+    }
+    function exportCsv() {
+      const headers = ["상태","잔여일","팀","Tank No","저장품명","허가번호","허가량","최근정기검사일","중간정기검사일","정밀정기검사일","다음F/U일","비고","완료"];
+      const rows = tanks.map(t => {
+        const st = statusOf(t);
+        return [st.label, st.daysText, t.team, t.tankNo, t.material, t.permit, t.capacity, t.regular, t.intermediate, t.precision, t.next, t.memo, t.done ? "완료" : "미완료"];
+      });
+      const csv = [headers, ...rows].map(r => r.map(v => `"${String(v ?? "").replaceAll('"','""')}"`).join(",")).join("\n");
+      const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "옥외탱크저장소_정기검사_FU.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
